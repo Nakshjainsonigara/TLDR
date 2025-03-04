@@ -204,10 +204,18 @@ class SelectedUrls(BaseModel):
 def select_top_urls(state: GraphState) -> GraphState:
     """Select most relevant articles."""
     try:
+        # Create article list string separately
+        article_list = []
+        for i, article in enumerate(state['potential_articles']):
+            article_entry = f"{i+1}. Title: {article['title']}\nURL: {article['url']}\nDescription: {article['description']}\n"
+            article_list.append(article_entry)
+        
+        articles_text = "\n".join(article_list)
+        
         prompt = (
             f"Based on the user news query: {state['news_query']}\n\n"
             "Here are the available articles:\n"
-            f"{[f'{i+1}. Title: {article['title']}\nURL: {article['url']}\nDescription: {article['description']}\n' for i, article in enumerate(state['potential_articles'])]}\n\n"
+            f"{articles_text}\n"
             f"Please select exactly {state['num_articles_tldr']} most relevant articles.\n"
             "Respond with ONLY the complete URLs, one per line, no other text."
         )
