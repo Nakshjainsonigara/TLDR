@@ -64,17 +64,15 @@ class TavilyParams(BaseModel):
 def generate_tavily_params(state: GraphState) -> GraphState:
     """Based on the query, generate Tavily search params."""
     try:
-        # Simple prompt to get search parameters
-        prompt = f"""
-        Create search parameters for finding news about: {state['news_query']}
-        
-        Return ONLY a JSON object with these exact fields:
-        {{
-            "query": "the search query",
-            "search_depth": "basic or advanced",
-            "max_results": 5
-        }}
-        """
+        prompt = (
+            f"Create search parameters for finding news about: {state['news_query']}\n\n"
+            "Return ONLY a JSON object with these exact fields:\n"
+            "{\n"
+            '    "query": "the search query",\n'
+            '    "search_depth": "basic or advanced",\n'
+            '    "max_results": 5\n'
+            "}"
+        )
         
         # Get response from LLM
         response = llm.invoke(prompt).content
@@ -206,16 +204,13 @@ class SelectedUrls(BaseModel):
 def select_top_urls(state: GraphState) -> GraphState:
     """Select most relevant articles."""
     try:
-        prompt = f"""
-        Based on the user news query: {state["news_query"]}
-
-        Here are the available articles:
-        {[f"{i+1}. Title: {article['title']}\nURL: {article['url']}\nDescription: {article['description']}\n" 
-          for i, article in enumerate(state["potential_articles"])]}
-
-        Please select exactly {state["num_articles_tldr"]} most relevant articles.
-        Respond with ONLY the complete URLs, one per line, no other text.
-        """
+        prompt = (
+            f"Based on the user news query: {state['news_query']}\n\n"
+            "Here are the available articles:\n"
+            f"{[f'{i+1}. Title: {article['title']}\nURL: {article['url']}\nDescription: {article['description']}\n' for i, article in enumerate(state['potential_articles'])]}\n\n"
+            f"Please select exactly {state['num_articles_tldr']} most relevant articles.\n"
+            "Respond with ONLY the complete URLs, one per line, no other text."
+        )
         
         print("Selecting top URLs...")
         result = llm.invoke(prompt).content
