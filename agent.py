@@ -137,22 +137,38 @@ def retrieve_articles_metadata(state: GraphState) -> GraphState:
     return state
 
 def format_results(state: GraphState) -> GraphState:
-    """Format final results."""
-    if not state["tldr_articles"]:
-        state["formatted_results"] = "No relevant articles found."
-        return state
+    """Format the final results in a clean, readable way."""
+    try:
+        # Start with the main summary
+        summary_parts = []
         
-    searches = [params["query"] for params in state["past_searches"]]
-    formatted_results = f"Results for: {state['news_query']}\nSearches: {', '.join(searches)}\n\n"
+        # Group articles by topic/theme
+        for article in state["tldr_articles"]:
+            summary = article.get("summary", "").strip()
+            if not summary:
+                continue
+                
+            # Extract title and bullet points
+            lines = summary.split('\n')
+            title = lines[0] if lines else "Untitled"
+            bullet_points = [line for line in lines if line.strip().startswith('*')]
+            
+            summary_parts.append(f"## {title}\n")
+            summary_parts.extend(bullet_points)
+            summary_parts.append("\n")
+        
+        # Add sources section
+        summary_parts.append("\n## Sources\n")
+        for article in state["tldr_articles"]:
+            summary_parts.append(f"- [{article['title']}]({article['url']})")
+        
+        # Combine all parts
+        state["formatted_results"] = "\n".join(summary_parts)
+        
+    except Exception as e:
+        print(f"Error formatting results: {e}")
+        state["formatted_results"] = "Error formatting results. Please try again."
     
-    for article in state["tldr_articles"]:
-        if "summary" in article:
-            formatted_results += f"{article['summary']}\n\n"
-        else:
-            formatted_results += f"{article['title']}\n{article['url']}\n* No summary available\n\n"
-    
-    state["formatted_results"] = formatted_results
-    print("Results formatted successfully")
     return state
 
 def articles_text_decision(state: GraphState) -> str:
@@ -255,9 +271,9 @@ async def summarize_articles_parallel(state: GraphState) -> GraphState:
         "Format as:\n"
         "{title}\n"
         "{url}\n"
-        "* Key point 1\n"
-        "* Key point 2\n"
-        "* Key point 3"
+        "Key point 1\n"
+        "Key point 2\n"
+        "Key point 3"
     )
     
     async def summarize(article):
@@ -265,7 +281,7 @@ async def summarize_articles_parallel(state: GraphState) -> GraphState:
             result = await llm.ainvoke(prompt_template.format(
                 title=article["title"],
                 url=article["url"],
-                text=article["text"][:5000]  # Truncate for token limits
+                text=article["text"][:2000]  # Truncate for token limits
             ))
             return result.content
         except Exception as e:

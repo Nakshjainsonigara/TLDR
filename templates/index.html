@@ -3,79 +3,132 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart News Search</title>
+    <title>AI News Search</title>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
         body {
             margin: 0;
             padding: 0;
-            background-color: #1a1a1a;
-            color: #ffffff;
+            min-height: 100vh;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #1a1a1a 0%, #0a0a0a 100%);
+            color: #ffffff;
         }
 
         .container {
             max-width: 800px;
-            margin: 60px auto;
-            padding: 20px;
+            margin: 0 auto;
+            padding: 40px 20px;
         }
 
         h1 {
             text-align: center;
-            font-size: 42px;
+            font-size: 2.5em;
             margin-bottom: 40px;
+            background: linear-gradient(90deg, #fff, #e0e0e0);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
         }
 
         .search-container {
             position: relative;
-            margin-bottom: 30px;
+            margin-bottom: 40px;
         }
 
         .search-input {
             width: 100%;
             padding: 15px 20px;
-            border-radius: 12px;
-            border: 1px solid #333;
-            background-color: #2d2d2d;
-            color: #ffffff;
-            font-size: 16px;
-            outline: none;
-        }
-
-        .search-button {
-            position: absolute;
-            right: 10px;
-            top: 50%;
-            transform: translateY(-50%);
-            background-color: #444;
+            font-size: 1.1em;
             border: none;
-            border-radius: 8px;
-            padding: 8px 16px;
-            color: white;
-            cursor: pointer;
-        }
-
-        .results {
-            margin-top: 30px;
-        }
-
-        .status {
-            padding: 10px;
-            margin: 10px 0;
-            border-radius: 8px;
-            background-color: #2d2d2d;
-        }
-
-        .article {
-            padding: 20px;
-            margin: 15px 0;
             border-radius: 12px;
-            background-color: #2d2d2d;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .search-input:focus {
+            outline: none;
+            background: rgba(255, 255, 255, 0.15);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        .results-container {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            padding: 30px;
+            margin-top: 30px;
+            backdrop-filter: blur(12px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .markdown-body {
+            color: #ffffff;
+        }
+
+        .markdown-body h1 {
+            font-size: 28px;
+            margin-bottom: 25px;
+            text-align: left;
+            background: linear-gradient(90deg, #ffffff, #e0e0e0);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .markdown-body h2 {
+            font-size: 22px;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            color: #ffffff;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 8px;
+        }
+
+        .markdown-body ul {
+            margin: 15px 0;
+            padding-left: 20px;
+        }
+
+        .markdown-body li {
+            margin: 10px 0;
+            line-height: 1.6;
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        .source-box {
+            margin-top: 30px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+        }
+
+        .source-box a {
+            color: #ffffff;
+            text-decoration: none;
+            opacity: 0.8;
+            transition: opacity 0.2s ease;
+        }
+
+        .source-box a:hover {
+            opacity: 1;
+            text-decoration: underline;
         }
 
         .loading {
             text-align: center;
             padding: 20px;
-            color: #888;
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        @keyframes pulse {
+            0% { opacity: 0.6; }
+            50% { opacity: 1; }
+            100% { opacity: 0.6; }
+        }
+
+        .loading-indicator {
+            animation: pulse 1.5s infinite;
         }
     </style>
 </head>
@@ -83,34 +136,20 @@
     <div class="container">
         <h1>What do you want to know?</h1>
         <div class="search-container">
-            <input type="text" id="searchInput" class="search-input" placeholder="Ask anything...">
-            <button class="search-button" onclick="performSearch()">→</button>
+            <input type="text" class="search-input" placeholder="Ask anything..." id="searchInput">
         </div>
-        <div id="status" class="status" style="display: none;"></div>
-        <div id="results" class="results"></div>
+        <div id="results"></div>
     </div>
 
     <script>
         const searchInput = document.getElementById('searchInput');
-        const statusDiv = document.getElementById('status');
         const resultsDiv = document.getElementById('results');
 
-        searchInput.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                performSearch();
-            }
-        });
-
-        async function performSearch() {
-            const query = searchInput.value;
-            if (!query) return;
-
-            statusDiv.style.display = 'block';
-            statusDiv.textContent = 'Searching...';
-            resultsDiv.innerHTML = '<div class="loading">Processing your request...</div>';
+        async function handleSearch(query) {
+            resultsDiv.innerHTML = '<div class="loading"><div class="loading-indicator">Searching for insights...</div></div>';
 
             try {
-                const response = await fetch('http://localhost:5000/api/search', {
+                const response = await fetch('/api/search', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -123,26 +162,31 @@
                 });
 
                 const data = await response.json();
-                
-                // Format and display results
                 resultsDiv.innerHTML = formatResults(data.result);
-                statusDiv.style.display = 'none';
             } catch (error) {
-                resultsDiv.innerHTML = `<div class="article">Error: ${error.message}</div>`;
-                statusDiv.style.display = 'none';
+                resultsDiv.innerHTML = '<div class="error">An error occurred. Please try again.</div>';
             }
         }
 
         function formatResults(results) {
-            if (!results) return '<div class="article">No results found</div>';
+            if (!results) return '<div class="results-container">No results found</div>';
             
-            // Split the results into sections
-            const sections = results.split('\n\n');
+            const htmlContent = marked.parse(results);
             
-            return sections.map(section => {
-                return `<div class="article">${section.replace(/\n/g, '<br>')}</div>`;
-            }).join('');
+            return `
+                <div class="results-container">
+                    <div class="markdown-body">
+                        ${htmlContent}
+                    </div>
+                </div>
+            `;
         }
+
+        searchInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                handleSearch(searchInput.value);
+            }
+        });
     </script>
 </body>
 </html> 
