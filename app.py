@@ -11,7 +11,7 @@ def index():
     return render_template('index.html')
 
 @app.route('/api/search', methods=['POST'])
-async def search():
+def search():
     try:
         data = request.json
         query = data.get('query', '')
@@ -21,15 +21,25 @@ async def search():
         if not query:
             return jsonify({'error': 'Query is required'}), 400
 
-        result = await run_workflow(
-            query=query,
-            num_searches_remaining=num_searches,
-            num_articles_tldr=num_articles
-        )
+        # Create new event loop for async operation
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        
+        try:
+            result = loop.run_until_complete(
+                run_workflow(
+                    query=query,
+                    num_searches_remaining=num_searches,
+                    num_articles_tldr=num_articles
+                )
+            )
+        finally:
+            loop.close()
         
         return jsonify({'result': result})
+    
     except Exception as e:
-        print(f"Error in search endpoint: {str(e)}")  # Add logging
+        print(f"Error in search endpoint: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':

@@ -161,6 +161,7 @@
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
+                        'Accept': 'application/json'
                     },
                     body: JSON.stringify({
                         query: query,
@@ -169,12 +170,19 @@
                     })
                 });
 
-                const data = await response.json();
-                
+                // Log the response for debugging
+                console.log('Response status:', response.status);
+                const contentType = response.headers.get('content-type');
+                console.log('Content-Type:', contentType);
+
                 if (!response.ok) {
-                    throw new Error(data.error || 'Server error occurred');
+                    const text = await response.text();
+                    console.error('Error response:', text);
+                    throw new Error('Server error: ' + response.status);
                 }
 
+                const data = await response.json();
+                
                 if (data.error) {
                     throw new Error(data.error);
                 }
