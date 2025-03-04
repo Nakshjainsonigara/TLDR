@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI News Search</title>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         body {
             margin: 0;
@@ -36,8 +37,9 @@
         }
 
         .search-input {
-            width: 100%;
+            width: calc(100% - 60px);
             padding: 15px 20px;
+            padding-right: 50px;
             font-size: 1.1em;
             border: none;
             border-radius: 12px;
@@ -52,6 +54,41 @@
             outline: none;
             background: rgba(255, 255, 255, 0.15);
             box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        .search-button {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 1.2em;
+            cursor: pointer;
+            padding: 10px;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+        }
+
+        .search-button:hover {
+            color: white;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .search-button:active {
+            transform: translateY(-50%) scale(0.95);
+        }
+
+        .search-container:hover .search-input {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .search-container:focus-within .search-button {
+            color: white;
         }
 
         .results-container {
@@ -138,6 +175,64 @@
             border-radius: 12px;
             text-align: center;
         }
+
+        .loading-sequence {
+            text-align: center;
+            padding: 40px 20px;
+        }
+
+        .loading-message {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.5s ease;
+            color: rgba(255, 255, 255, 0.8);
+            margin: 10px 0;
+            font-size: 1.1em;
+        }
+
+        .loading-message.active {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .loading-dot {
+            display: inline-block;
+            animation: dot-pulse 1.5s infinite;
+            margin-left: 2px;
+        }
+
+        .loading-dot:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .loading-dot:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes dot-pulse {
+            0%, 100% { opacity: 0.2; }
+            50% { opacity: 1; }
+        }
+
+        .loading-container {
+            position: relative;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            padding: 20px;
+            backdrop-filter: blur(12px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .progress-bar {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            height: 2px;
+            background: linear-gradient(90deg, #4a9eff, #a855f7);
+            width: 0%;
+            transition: width 0.5s ease;
+            border-radius: 0 0 16px 16px;
+        }
     </style>
 </head>
 <body>
@@ -145,6 +240,9 @@
         <h1>What do you want to know?</h1>
         <div class="search-container">
             <input type="text" class="search-input" placeholder="Ask anything..." id="searchInput">
+            <button class="search-button" id="searchButton">
+                <i class="fas fa-search"></i>
+            </button>
         </div>
         <div id="results"></div>
     </div>
@@ -153,9 +251,59 @@
         const searchInput = document.getElementById('searchInput');
         const resultsDiv = document.getElementById('results');
 
-        async function handleSearch(query) {
-            resultsDiv.innerHTML = '<div class="loading"><div class="loading-indicator">Searching for insights...</div></div>';
+        const loadingMessages = [
+            "Analyzing your query...",
+            "Searching for relevant insights...",
+            "Scanning top sources...",
+            "Filtering out noise...",
+            "Summarizing key takeaways..."
+        ];
 
+        function createLoadingSequence() {
+            const container = document.createElement('div');
+            container.className = 'loading-container';
+            
+            const sequenceDiv = document.createElement('div');
+            sequenceDiv.className = 'loading-sequence';
+            
+            loadingMessages.forEach(message => {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = 'loading-message';
+                messageDiv.innerHTML = `${message}<span class="loading-dot">.</span><span class="loading-dot">.</span><span class="loading-dot">.</span>`;
+                sequenceDiv.appendChild(messageDiv);
+            });
+            
+            const progressBar = document.createElement('div');
+            progressBar.className = 'progress-bar';
+            
+            container.appendChild(sequenceDiv);
+            container.appendChild(progressBar);
+            return container;
+        }
+
+        async function animateLoadingSequence() {
+            const messages = document.querySelectorAll('.loading-message');
+            const progressBar = document.querySelector('.progress-bar');
+            const progressStep = 100 / messages.length;
+            
+            for (let i = 0; i < messages.length; i++) {
+                messages[i].classList.add('active');
+                progressBar.style.width = `${(i + 1) * progressStep}%`;
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                if (i < messages.length - 1) {
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                }
+            }
+        }
+
+        async function handleSearch(query) {
+            resultsDiv.innerHTML = '';
+            resultsDiv.appendChild(createLoadingSequence());
+            
+            // Start the loading animation
+            const loadingAnimation = animateLoadingSequence();
+            
             try {
                 const response = await fetch('/api/search', {
                     method: 'POST',
@@ -170,7 +318,6 @@
                     })
                 });
 
-                // Log the response for debugging
                 console.log('Response status:', response.status);
                 const contentType = response.headers.get('content-type');
                 console.log('Content-Type:', contentType);
@@ -187,9 +334,16 @@
                     throw new Error(data.error);
                 }
 
+                // Wait for the loading animation to complete
+                await loadingAnimation;
+                // Add a small delay for smooth transition
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
                 resultsDiv.innerHTML = formatResults(data.result);
             } catch (error) {
                 console.error('Search error:', error);
+                // Wait for the loading animation to complete
+                await loadingAnimation;
                 resultsDiv.innerHTML = `
                     <div class="results-container error">
                         <p>Error: ${error.message || 'An unexpected error occurred'}</p>
@@ -212,10 +366,22 @@
             `;
         }
 
+        document.getElementById('searchButton').addEventListener('click', () => {
+            const query = searchInput.value;
+            if (query.trim()) {
+                handleSearch(query);
+            }
+        });
+
         searchInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
+            if (e.key === 'Enter' && searchInput.value.trim()) {
                 handleSearch(searchInput.value);
             }
+        });
+
+        document.getElementById('searchButton').addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            searchInput.focus();
         });
     </script>
 </body>
