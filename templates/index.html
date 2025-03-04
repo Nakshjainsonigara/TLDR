@@ -130,6 +130,14 @@
         .loading-indicator {
             animation: pulse 1.5s infinite;
         }
+
+        .error {
+            color: #ff6b6b;
+            background: rgba(255, 107, 107, 0.1);
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
@@ -162,9 +170,23 @@
                 });
 
                 const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.error || 'Server error occurred');
+                }
+
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+
                 resultsDiv.innerHTML = formatResults(data.result);
             } catch (error) {
-                resultsDiv.innerHTML = '<div class="error">An error occurred. Please try again.</div>';
+                console.error('Search error:', error);
+                resultsDiv.innerHTML = `
+                    <div class="results-container error">
+                        <p>Error: ${error.message || 'An unexpected error occurred'}</p>
+                        <p>Please try again or contact support if the problem persists.</p>
+                    </div>`;
             }
         }
 
