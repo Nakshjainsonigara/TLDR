@@ -247,13 +247,15 @@ def select_top_urls(state: GraphState) -> GraphState:
 
 async def summarize_articles_parallel(state: GraphState) -> GraphState:
     """Generate summaries concurrently."""
-    prompt_template = """Create bullet points for: {text}
-    Format as:
-    {title}
-    {url}
-    * Key point 1
-    * Key point 2
-    * Key point 3"""
+    prompt_template = (
+        "Create bullet points for: {text}\n"
+        "Format as:\n"
+        "{title}\n"
+        "{url}\n"
+        "* Key point 1\n"
+        "* Key point 2\n"
+        "* Key point 3"
+    )
     
     async def summarize(article):
         try:
