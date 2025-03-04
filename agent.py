@@ -94,10 +94,10 @@ def generate_tavily_params(state: GraphState) -> GraphState:
             "max_results": result["max_results"]
         }
         
-        print(rf"Generated search params: {state['search_params']}")
+        print(f"Generated search params: {state['search_params']}")
         
     except Exception as e:
-        print(rf"Error in parameter generation: {e}")
+        print(f"Error in parameter generation: {e}")
         # Fallback parameters
         state["search_params"] = {
             "query": state["news_query"],
@@ -110,7 +110,7 @@ def generate_tavily_params(state: GraphState) -> GraphState:
 def retrieve_articles_metadata(state: GraphState) -> GraphState:
     """Retrieve articles using Tavily Search."""
     try:
-        print(rf"Searching with params: {state['search_params']}")
+        print(f"Searching with params: {state['search_params']}")
         search_results = tavily_client.search(
             query=state["search_params"]["query"],
             search_depth=state["search_params"]["search_depth"],
@@ -128,12 +128,12 @@ def retrieve_articles_metadata(state: GraphState) -> GraphState:
             if article['url']:  # Only add if URL exists
                 articles.append(article)
         
-        print(rf"Found {len(articles)} articles")    
+        print(f"Found {len(articles)} articles")    
         state["articles_metadata"] = articles
         state["past_searches"].append(state["search_params"])
         
     except Exception as e:
-        print(rf"Error in retrieve_articles_metadata: {e}")
+        print(f"Error in retrieve_articles_metadata: {e}")
         state["articles_metadata"] = []
     
     return state
@@ -169,10 +169,10 @@ def articles_text_decision(state: GraphState) -> str:
     
     if len(state["potential_articles"]) < state["num_articles_tldr"]:
         state["num_searches_remaining"] -= 1
-        print(rf"Not enough articles, searching again. Remaining searches: {state['num_searches_remaining']}")
+        print(f"Not enough articles, searching again. Remaining searches: {state['num_searches_remaining']}")
         return "generate_tavily_params"
     
-    print(rf"Found enough articles ({len(state['potential_articles'])}), proceeding to select top URLs.")
+    print(f"Found enough articles ({len(state['potential_articles'])}), proceeding to select top URLs.")
     return "select_top_urls"
 
 def retrieve_articles_text(state: GraphState) -> GraphState:
@@ -195,7 +195,7 @@ def retrieve_articles_text(state: GraphState) -> GraphState:
                     })
                     state["scraped_urls"].append(article['url'])
             except Exception as e:
-                print(rf"Scraping error: {e}")
+                print(f"Scraping error: {e}")
     
     state["potential_articles"].extend(potential_articles)
     return state
@@ -223,7 +223,7 @@ def select_top_urls(state: GraphState) -> GraphState:
         # Clean up URLs - remove any trailing '>' and whitespace
         urls = [url.strip('> \n') for url in re.findall(r'https?://[^\s<>]+', result)]
         
-        print(rf"Selected URLs: {urls}")
+        print(f"Selected URLs: {urls}")
         
         # Match URLs exactly with potential articles
         state["tldr_articles"] = [
@@ -236,10 +236,10 @@ def select_top_urls(state: GraphState) -> GraphState:
             print("No URL matches found, using fallback selection")
             state["tldr_articles"] = state["potential_articles"][:state["num_articles_tldr"]]
         
-        print(rf"Selected {len(state['tldr_articles'])} articles for TL;DR")
+        print(f"Selected {len(state['tldr_articles'])} articles for TL;DR")
         
     except Exception as e:
-        print(rf"Error selecting top URLs: {e}")
+        print(f"Error selecting top URLs: {e}")
         # Fallback to first n articles if selection fails
         state["tldr_articles"] = state["potential_articles"][:state["num_articles_tldr"]]
     
@@ -264,7 +264,7 @@ async def summarize_articles_parallel(state: GraphState) -> GraphState:
             ))
             return result.content
         except Exception as e:
-            print(rf"Summary error: {e}")
+            print(f"Summary error: {e}")
             return "Summary unavailable"
     
     summaries = await asyncio.gather(*[
@@ -335,7 +335,7 @@ async def run_workflow(query: str, num_searches_remaining: int = 3, num_articles
         return result["formatted_results"]
     except Exception as e:
         import traceback
-        print(rf"Workflow error: {str(e)}")
+        print(f"Workflow error: {str(e)}")
         print(traceback.format_exc())
         return f"An error occurred while processing your request: {str(e)}"
 async def main():
